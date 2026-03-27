@@ -1,0 +1,12 @@
+### Clone, Build, & Run
+- `git clone https://github.com/CS330-Enhanced.git --recurse-submodules`
+- Move to project root directory: `cd CS330-Enhanced`
+- Generate build using CMake: `cmake -Bbuild`
+- Build project: `cmake --build build`
+- Compile shaders (optional):
+	- Install [shadercross](https://github.com/libSDL-org/SDL_shadercross)
+	- Move to HLSL source directory: `cd build/shaders/source`
+	- Compile HLSL to binaries: `./compile.sh`
+		- You may have to give permission to execute as an application.
+	- Move back to project root directory: `cd ../../..`
+- Run project: `./build/Enhanced`
