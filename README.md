@@ -1,5 +1,9 @@
+### Install Dependencies
+- Windows: [SDL3 Dependencies](https://wiki.libsdl.org/SDL3/README-windows)
+- Linux: [SDL3 Dependencies](https://wiki.libsdl.org/SDL3/README-linux)
+- macOS: [SDL3 Dependencies](https://wiki.libsdl.org/SDL3/README-macos)
 ### Clone, Build, & Run
-- `git clone https://github.com/CS330-Enhanced.git --recurse-submodules`
+- Clone: `git clone https://github.com/CS330-Enhanced.git --recurse-submodules`
 - Move to project root directory: `cd CS330-Enhanced`
 - Generate build using CMake: `cmake -Bbuild`
 - Build project: `cmake --build build`
