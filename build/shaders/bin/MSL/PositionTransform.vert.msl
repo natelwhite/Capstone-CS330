@@ -1,0 +1,28 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct type_UBO
+{
+    float4x4 proj_view;
+    float4x4 model;
+};
+
+struct main0_out
+{
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 in_var_SV_Position [[attribute(0)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant type_UBO& UBO [[buffer(0)]])
+{
+    main0_out out = {};
+    out.gl_Position = (UBO.proj_view * UBO.model) * float4(in.in_var_SV_Position, 1.0);
+    return out;
+}
+

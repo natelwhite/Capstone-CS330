@@ -1,3 +1,4 @@
+#include "SDL3/SDL_keycode.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
@@ -10,24 +11,33 @@
 
 #include "SceneManager.hpp"
 
+// Globals for application core resources
 namespace {
 	std::shared_ptr<SDL_Window> g_Window { nullptr };
 	std::shared_ptr<SDL_GPUDevice> g_Gpu { nullptr };
 	std::unique_ptr<SceneManager> g_SceneMan { nullptr };
 };
 
+// This application uses SDL callback functions to implement the init, iterate, event, and quit logic.
+// See https://wiki.libsdl.org/SDL3/README-main-functions for more info
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
+	// Init SDL
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		return SDL_APP_FAILURE;
 	}
+	// Create window
 	const SDL_WindowFlags WINDOW_FLAGS {
-		SDL_WINDOW_MAXIMIZED |
 		SDL_WINDOW_RESIZABLE
 	};
-	g_Window.reset(SDL_CreateWindow("Enhanced", 0, 0, WINDOW_FLAGS), SDL_DestroyWindow);
+	g_Window.reset(SDL_CreateWindow("Enhanced", 800, 600, WINDOW_FLAGS), SDL_DestroyWindow);
 	if (!g_Window) {
 		return SDL_APP_FAILURE;
 	}
+	// Grab mouse focus
+	if (!SDL_SetWindowRelativeMouseMode(g_Window.get(), true)) {
+		return SDL_APP_FAILURE;
+	}
+	// Create GPU interface
 	const SDL_GPUShaderFormat SHADER_FORMATS {
 		SDL_GPU_SHADERFORMAT_SPIRV |
 		SDL_GPU_SHADERFORMAT_DXIL
@@ -46,25 +56,17 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
 	}
 	return SDL_APP_CONTINUE;
 }
-
 SDL_AppResult SDL_AppIterate(void* appstate) {
-	return g_SceneMan->render();
+	return g_SceneMan->iterate();
 }
-
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
 	switch(event->type) {
-	case SDL_EVENT_KEY_DOWN:
-		switch(event->key.key) {
-			// KEYBOARD EVENTS
-		}
-		break;
 	case SDL_EVENT_QUIT:
 		return SDL_APP_SUCCESS;
 		break;
 	}
-	return SDL_APP_CONTINUE;
+	return g_SceneMan->event(*event);
 }
-
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
 	switch(result) {
 	case SDL_APP_FAILURE: // program failed
@@ -93,4 +95,3 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
 	}
 	SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Program exited.");
 }
-
