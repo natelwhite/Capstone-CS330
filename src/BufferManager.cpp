@@ -2,6 +2,8 @@
 #include <stdexcept>
 
 #include "BufferManager.hpp"
+#include "SDL3/SDL_log.h"
+#include "fastgltf/types.hpp"
 
 BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filename) : m_gpu(gpu) {
 	// Load fastgltf asset
@@ -61,8 +63,8 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 	fastgltf::iterateSceneNodes(asset.get(), asset->defaultScene.value(), fastgltf::math::fmat4x4(), loadMeshes);
 
 	// Initialize buffers with size
-	// necessary to hold geometry in the asset
-	size_t scene_i_bytes { }, scene_v_bytes { };
+	// necessary to hold the asset's geometry
+	Uint32 scene_i_bytes { }, scene_v_bytes { };
 	auto prepareBuffers = [&](fastgltf::Node &node, fastgltf::math::fmat4x4 TRS) -> void {
 		if (const auto TRS (std::get_if<fastgltf::TRS>(&node.transform)); TRS) {
 			if (node.meshIndex.has_value()) {
@@ -77,16 +79,20 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 					const size_t prim_i_bytes {
 						asset->bufferViews.at(index_access.bufferViewIndex.value()).byteLength
 					};
-					// primitive position buffer byte length
-					const fastgltf::Attribute *pos { prim.findAttribute("POSITION") };
-					SDL_assert(pos);
-					fastgltf::Accessor &pos_access { asset->accessors.at(pos->accessorIndex) };
-					const size_t prim_pos_bytes {
-						asset->bufferViews.at(pos_access.bufferViewIndex.value()).byteLength
-					};
+					// Find byte length for each attribute buffer
+					Uint32 prim_pos_bytes { }, prim_norm_bytes { };
+					for (const fastgltf::Attribute &attrib : prim.attributes) {
+						fastgltf::Accessor &access { asset->accessors.at(attrib.accessorIndex) };
+						SDL_assert(access.bufferViewIndex.has_value());
+						if (attrib.name == "POSITION") {
+							prim_pos_bytes = asset->bufferViews.at(access.bufferViewIndex.value()).byteLength;
+						} else if (attrib.name == "NORMAL") {
+							prim_norm_bytes = asset->bufferViews.at(access.bufferViewIndex.value()).byteLength;
+						}
+					}
 					// Vertex attributes stored in a single buffer,
 					// sum them
-					const size_t prim_v_bytes { prim_pos_bytes };
+					const Uint32 prim_v_bytes { prim_pos_bytes + prim_norm_bytes };
 					// Sum primitive byte lengths with scene byte lengths
 					scene_i_bytes += prim_i_bytes;
 					scene_v_bytes += prim_v_bytes;
@@ -125,16 +131,26 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 					const Uint32 prim_i_bytes { static_cast<Uint32>(
 						asset->bufferViews.at(index_access.bufferViewIndex.value()).byteLength
 					) };
-					// primitive position buffer byte length
-					const fastgltf::Attribute *pos { prim.findAttribute("POSITION") };
-					SDL_assert(pos);
-					fastgltf::Accessor &pos_access { asset->accessors.at(pos->accessorIndex) };
-					const Uint32 prim_pos_bytes { static_cast<Uint32>(
-						asset->bufferViews.at(pos_access.bufferViewIndex.value()).byteLength
-					) };
+					// Find byte length for each attribute buffer
+					// and move attribute data to the appropriate vector
+					Uint32 prim_pos_bytes { }, prim_norm_bytes { };
+					std::vector<fastgltf::math::fvec3> pos_data, norm_data;
+					for (const fastgltf::Attribute &attrib : prim.attributes) {
+						const fastgltf::Accessor &access { asset->accessors.at(attrib.accessorIndex) };
+						SDL_assert(access.bufferViewIndex.has_value());
+						if (attrib.name == "POSITION") {
+							prim_pos_bytes = asset->bufferViews.at(access.bufferViewIndex.value()).byteLength;
+							pos_data.resize(access.count);
+							fastgltf::copyFromAccessor<fastgltf::math::fvec3>(asset.get(), access, pos_data.data());
+						} else if (attrib.name == "NORMAL") {
+							prim_norm_bytes = asset->bufferViews.at(access.bufferViewIndex.value()).byteLength;
+							norm_data.resize(access.count);
+							fastgltf::copyFromAccessor<fastgltf::math::fvec3>(asset.get(), access, norm_data.data());
+						}
+					}
 					// Vertex attributes stored in a single buffer,
 					// sum them
-					const Uint32 prim_v_bytes { prim_pos_bytes };
+					const Uint32 prim_v_bytes { prim_pos_bytes + prim_norm_bytes };
 					// Move all data to transfer buffer,
 					// keeping track of byte offsets
 					GPUResourceTraits<TRANSFER_BUFFER>::Info trans_buf_info {
@@ -142,20 +158,17 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 						.size = prim_i_bytes + prim_v_bytes
 					};
 					GPUResource<TRANSFER_BUFFER> trans_buf { m_gpu, trans_buf_info };
-					// Move index data
+					// Move index data to transfer buffer
 					Uint16* i_data { static_cast<Uint16*>(
 						SDL_MapGPUTransferBuffer(m_gpu.lock().get(), trans_buf.getResource(), false)
 					) };
 					fastgltf::copyFromAccessor<Uint16>(asset.get(), index_access, i_data);
-					// Move all vertex attribute data to vector of vertices
-					std::vector<fastgltf::math::fvec3> pos_data(pos_access.count);
-					fastgltf::copyFromAccessor<fastgltf::math::fvec3>(asset.get(), pos_access, pos_data.data());
 					// Move Vertices to transfer buffer
 					Vertex* v_data { static_cast<Vertex*>(
 						reinterpret_cast<Vertex*>(i_data + index_access.count)
 					) };
 					for (size_t i = 0; i < pos_data.size(); ++i) {
-						v_data[i] = Vertex(pos_data.at(i));
+						v_data[i] = Vertex(pos_data.at(i), norm_data.at(i));
 					}
 					SDL_UnmapGPUTransferBuffer(m_gpu.lock().get(), trans_buf.getResource());
 					// Upload transfer buffer to GPU

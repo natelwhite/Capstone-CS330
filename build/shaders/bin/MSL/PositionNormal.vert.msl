@@ -1,0 +1,34 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct type_UBO
+{
+    float4x4 proj_view;
+    float4x4 model;
+};
+
+struct main0_out
+{
+    float3 out_var_NORMAL [[user(locn0)]];
+    float4 out_var_TEXCOORD1 [[user(locn1)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 in_var_SV_Position [[attribute(0)]];
+    float3 in_var_NORMAL [[attribute(1)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant type_UBO& UBO [[buffer(0)]])
+{
+    main0_out out = {};
+    float4 _37 = float4(in.in_var_SV_Position, 1.0);
+    out.gl_Position = (UBO.proj_view * UBO.model) * _37;
+    out.out_var_NORMAL = fast::normalize(in.in_var_NORMAL * float3x3(float4(UBO.model[0][0], UBO.model[1][0], UBO.model[2][0], UBO.model[3][0]).xyz, float4(UBO.model[0][1], UBO.model[1][1], UBO.model[2][1], UBO.model[3][1]).xyz, float4(UBO.model[0][2], UBO.model[1][2], UBO.model[2][2], UBO.model[3][2]).xyz));
+    out.out_var_TEXCOORD1 = UBO.model * _37;
+    return out;
+}
+

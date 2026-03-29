@@ -9,8 +9,8 @@ SceneManager::SceneManager(std::shared_ptr<SDL_Window> window, std::shared_ptr<S
 			return;
 		}
 		// load shaders
-		std::unique_ptr<GPUResource<SHADER>> v_shader { loadShader("PositionTransform.vert", 0, 0, 0, 1) };
-		std::unique_ptr<GPUResource<SHADER>> f_shader { loadShader("SolidColor.frag", 0, 0, 0, 1) };
+		std::unique_ptr<GPUResource<SHADER>> v_shader { loadShader("PositionNormal.vert", 0, 0, 0, 1) };
+		std::unique_ptr<GPUResource<SHADER>> f_shader { loadShader("BlinnPhong.frag", 0, 0, 0, 1) };
 		// create pipeline
 		const SDL_GPUVertexBufferDescription BUF_DESCRIPTION { m_buffer_man->getBufferDescription() };
 		const std::vector<SDL_GPUVertexAttribute> VERT_ATTRIBS { m_buffer_man->getVertexAttributes() };

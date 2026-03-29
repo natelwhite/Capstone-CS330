@@ -1,0 +1,30 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct type_UBO
+{
+    float2 near_far;
+    float3 view_pos;
+};
+
+struct main0_out
+{
+    float4 out_var_SV_Target0 [[color(0)]];
+};
+
+struct main0_in
+{
+    float3 in_var_NORMAL [[user(locn0)]];
+    float4 in_var_TEXCOORD1 [[user(locn1)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], constant type_UBO& UBO [[buffer(0)]])
+{
+    main0_out out = {};
+    float3 _40 = fast::normalize(float3(0.0, 100.0, 50.0) - in.in_var_TEXCOORD1.xyz);
+    out.out_var_SV_Target0 = float4(float3(0.60000002384185791015625, 0.300000011920928955078125, 0.20000000298023223876953125) * ((float3(0.100000001490116119384765625) + (float3(1.0) * precise::max(0.0, dot(_40, in.in_var_NORMAL)))) + (float3(1.0) * (powr(precise::max(dot(fast::normalize(UBO.view_pos - in.in_var_TEXCOORD1.xyz), reflect(-_40, in.in_var_NORMAL)), 0.0), 32.0) * 0.5))), 1.0);
+    return out;
+}
+

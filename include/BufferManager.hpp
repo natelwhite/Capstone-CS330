@@ -57,7 +57,7 @@ private:
 	std::vector<Mesh> m_objects;
 	// Structures that will be used for rendering data in a GLTF file
 	struct Vertex {
-		fastgltf::math::fvec3 pos;
+		fastgltf::math::fvec3 pos, norm;
 	};
 	struct VertexUniforms {
 		fastgltf::math::fmat4x4 camera_projection_view;
@@ -79,5 +79,10 @@ private:
 		.buffer_slot = 0,
 		.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
 		.offset = 0
+	}, {
+		.location = 1,
+		.buffer_slot = 0,
+		.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+		.offset = sizeof(Vertex::pos)
 	} };
 };
