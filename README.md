@@ -3,8 +3,8 @@
 - Linux: [SDL3 Dependencies](https://wiki.libsdl.org/SDL3/README-linux)
 - macOS: [SDL3 Dependencies](https://wiki.libsdl.org/SDL3/README-macos)
 ### Clone, Build, & Run
-- Clone: `git clone https://github.com/CS330-Enhanced.git --recurse-submodules`
-- Move to project root directory: `cd CS330-Enhanced`
+- Clone: `git clone https://github.com/Capstone-CS330.git --recurse-submodules`
+- Move to project root directory: `cd Capstone-CS330`
 - Generate build using CMake: `cmake -Bbuild`
 - Build project: `cmake --build build`
 - Compile shaders (optional):
