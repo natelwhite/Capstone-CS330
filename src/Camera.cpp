@@ -1,4 +1,5 @@
 #include "Camera.hpp"
+#include <cmath>
 
 void Camera::iterate() noexcept {
 	// Get local camera axes
