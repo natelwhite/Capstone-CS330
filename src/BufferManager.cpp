@@ -199,27 +199,23 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 }
 
 void BufferManager::sortObjects(const Camera &camera) noexcept {
-	auto closest {[camera](const Mesh &a, const Mesh &b) {
+	const auto square = [](const double &val) {
+		return val * val;
+	};
+	const auto distance = [square](const fastgltf::math::fvec3 &a, const fastgltf::math::fvec3 &b) {
+		return sqrt(square(static_cast<double>(a.x() - b.x()))
+			+square(static_cast<double>(a.y() - b.y()))
+			+square(static_cast<double>(a.z() - b.z()))
+		);
+	};
+	const auto closest = [camera, distance](const Mesh &a, const Mesh &b) {
 		const fastgltf::math::fvec3 cam_pos { camera.pos() };
 		const fastgltf::math::fvec3 a_pos { a.transform.translation };
 		const fastgltf::math::fvec3 b_pos { b.transform.translation };
-		auto square = [](double val) {
-			return val * val;
-		};
-		const double a_dist {
-			sqrt(square(static_cast<double>(a_pos.x() - cam_pos.x()))
-				+square(static_cast<double>(a_pos.y() - cam_pos.y()))
-				+square(static_cast<double>(a_pos.z() - cam_pos.z()))
-			)
-		};
-		const double b_dist {
-			sqrt(square(static_cast<double>(b_pos.x() - cam_pos.x()))
-				+square(static_cast<double>(b_pos.y() - cam_pos.y()))
-				+square(static_cast<double>(b_pos.z() - cam_pos.z()))
-			)
-		};
+		const double a_dist { distance(a_pos, cam_pos) };
+		const double b_dist { distance(b_pos, cam_pos) };
 		return a_dist > b_dist;
-	}};
+	};
 	std::sort(m_objects.begin(), m_objects.end(), closest);
 }
 
