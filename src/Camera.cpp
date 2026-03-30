@@ -1,6 +1,6 @@
 #include "Camera.hpp"
 
-void Camera::iterate() {
+void Camera::iterate() noexcept {
 	// Get local camera axes
 	const fastgltf::math::fvec3 right_dir = right();
 	const fastgltf::math::fvec3 up_dir = -fastgltf::math::cross(m_forward_dir, right_dir);
@@ -48,7 +48,7 @@ void Camera::iterate() {
 }
 
 
-void Camera::event(const SDL_Event &e) {
+void Camera::event(const SDL_Event &e) noexcept {
 	switch(e.type) {
 	// Resize aspect ratio
 	case SDL_EVENT_WINDOW_RESIZED: {
@@ -109,13 +109,13 @@ void Camera::event(const SDL_Event &e) {
 	}
 }
 
-fastgltf::math::fmat4x4 Camera::proj() const {
+fastgltf::math::fmat4x4 Camera::proj() const noexcept {
 	const float ratio { m_aspect_ratio.x() / m_aspect_ratio.y() };
 	const float fov { fastgltf::math::radians(70.0f) };
 	return perspectiveRH(fov, ratio, m_near_far.x(), m_near_far.y());
 }
 
-fastgltf::math::fmat4x4 Camera::view() const {
+fastgltf::math::fmat4x4 Camera::view() const noexcept {
 	const fastgltf::math::fvec3 up { 0, 1, 0 };
 	return lookAtRH(m_transform.translation, m_transform.translation + m_forward_dir, up);
 }

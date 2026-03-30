@@ -51,8 +51,8 @@ SceneManager::SceneManager(std::shared_ptr<SDL_Window> window, std::shared_ptr<S
 
 SDL_AppResult SceneManager::iterate() noexcept {
 	if (m_is_focused) {
-		// Update camera state
 		m_camera.iterate();
+		m_buffer_man->sortObjects(m_camera);
 		SDL_GPUCommandBuffer* cmdbuf { SDL_AcquireGPUCommandBuffer(m_gpu.get()) };
 		if (!cmdbuf) {
 			return SDL_APP_FAILURE;

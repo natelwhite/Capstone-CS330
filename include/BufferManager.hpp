@@ -28,6 +28,13 @@ public:
 	BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filename);
 	~BufferManager() { }
 	/*
+	 * Sort objects by distance from the camera
+	 *
+	 * Call this before the render pass
+	 * @param camera Sort using this camera's position
+	 */
+	void sortObjects(const Camera &camera) noexcept;
+	/*
 	 * Render geometry stored in buffers
 	 *
 	 * @param cmdbuf A pointer to a command buffer that has already been acquired.

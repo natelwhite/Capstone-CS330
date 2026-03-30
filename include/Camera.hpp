@@ -15,35 +15,35 @@ public:
 	/*
 	 * SDL iterate handler
 	 */
-	void iterate();
+	void iterate() noexcept;
 	/**
 	 * SDL_Event handler
 	 */
-	void event(const SDL_Event &e);
+	void event(const SDL_Event &e) noexcept;
 	/**
 	 * Evaluate this camera's projection matrix
 	 *
 	 * Using the ratio and field of view of the camera,
 	 * returns the projection matrix.
 	 */
-	fastgltf::math::fmat4x4 proj() const;
+	fastgltf::math::fmat4x4 proj() const noexcept;
 	/**
 	 * Evaluate this camera's view matrix
 	 *
 	 * Using the position and forward direction of the camera,
 	 * returns the view matrix.
 	 */
-	fastgltf::math::fmat4x4 view() const;
+	fastgltf::math::fmat4x4 view() const noexcept;
 	/**
 	 * Retrieve the near and far constants
 	 *
 	 * Returns values as a 2D vector
 	 */
-	fastgltf::math::fvec2 nearFar() const { return m_near_far; }
+	fastgltf::math::fvec2 nearFar() const noexcept { return m_near_far; }
 	/**
 	 * Retrieve the current position of the camera
 	 */
-	fastgltf::math::fvec3 pos() const { return m_transform.translation; }
+	fastgltf::math::fvec3 pos() const noexcept { return m_transform.translation; }
 private:
 	const fastgltf::math::fvec2 m_near_far { -1, 1 };
 	fastgltf::math::fvec2 m_aspect_ratio { 0, 0 }; // changes with window aspect ratio
