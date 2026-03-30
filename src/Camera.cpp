@@ -143,7 +143,7 @@ fastgltf::math::fmat4x4 Camera::lookAtRH(const fastgltf::math::fvec3& eye, const
 
 fastgltf::math::fmat4x4 Camera::perspectiveRH(float fov, float ratio, float zNear, float zFar) const noexcept {
 	fastgltf::math::mat<float, 4, 4> ret(0.f);
-	auto tanHalfFov = std::tanf(fov / 2.f);
+	auto tanHalfFov = tanf(fov / 2.f);
 	ret.col(0).x() = 1.f / (ratio * tanHalfFov);
 	ret.col(1).y() = 1.f / tanHalfFov;
 	ret.col(2).z() = -(zFar + zNear) / (zFar - zNear);

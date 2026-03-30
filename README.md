@@ -11,6 +11,6 @@
 	- Install [shadercross](https://github.com/libSDL-org/SDL_shadercross)
 	- Move to HLSL source directory: `cd build/shaders/source`
 	- Compile HLSL to binaries: `./compile.sh`
-		- You may have to give permission to execute as an application.
+		- You'll likely have to give permission to execute as an application.
 	- Move back to project root directory: `cd ../../..`
 - Run project: `./build/Enhanced`
