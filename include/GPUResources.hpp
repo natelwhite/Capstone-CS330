@@ -1,8 +1,7 @@
 #pragma once
+#include <memory>
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_log.h>
-
-#include <memory>
 
 enum RESOURCE_TYPES {
 	TEXTURE,

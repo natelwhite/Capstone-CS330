@@ -1,12 +1,6 @@
 #pragma once
-#include <exception>
 #include <memory>
-
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_gpu.h>
-#include <SDL3/SDL_log.h>
-#include <SDL3/SDL_events.h>
-
 #include "BufferManager.hpp"
 #include "Camera.hpp"
 #include "GPUResources.hpp"

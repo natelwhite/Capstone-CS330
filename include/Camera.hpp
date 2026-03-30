@@ -1,8 +1,6 @@
 #pragma once
-#include "SDL3/SDL_scancode.h"
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
-
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/math.hpp>

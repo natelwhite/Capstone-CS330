@@ -1,9 +1,8 @@
 #include <filesystem>
 #include <stdexcept>
-
+#include <SDL3/SDL_log.h>
+#include <fastgltf/types.hpp>
 #include "BufferManager.hpp"
-#include "SDL3/SDL_log.h"
-#include "fastgltf/types.hpp"
 
 BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filename) : m_gpu(gpu) {
 	// Load fastgltf asset

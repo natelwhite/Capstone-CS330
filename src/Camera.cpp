@@ -1,5 +1,4 @@
 #include "Camera.hpp"
-#include "SDL3/SDL_log.h"
 
 void Camera::iterate() noexcept {
 	// Get local camera axes
