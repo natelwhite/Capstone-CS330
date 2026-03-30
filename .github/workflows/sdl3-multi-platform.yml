@@ -76,6 +76,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCXX_STANDARD="23"
         -S ${{ github.workspace }}
 
     - name: Install SDL3 dependencies (Linux)
@@ -99,6 +100,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCXX_STANDARD="23"
         -S ${{ github.workspace }}
 
     - name: Build
