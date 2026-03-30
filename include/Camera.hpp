@@ -48,7 +48,7 @@ private:
 	const fastgltf::math::fvec2 m_near_far { -1, 1 };
 	fastgltf::math::fvec2 m_aspect_ratio { 0, 0 }; // changes with window aspect ratio
 	fastgltf::TRS m_transform { };
-	float m_pitch { }, m_yaw { };
+	double m_pitch { }, m_yaw { };
 	fastgltf::math::fvec3 m_forward_dir {
 		fastgltf::math::normalize(fastgltf::math::fvec3{
 			static_cast<float>(cos(m_pitch) * sin(m_yaw)),

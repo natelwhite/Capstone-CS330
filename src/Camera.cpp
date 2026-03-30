@@ -1,4 +1,5 @@
 #include "Camera.hpp"
+#include "SDL3/SDL_log.h"
 
 void Camera::iterate() noexcept {
 	// Get local camera axes
@@ -61,6 +62,14 @@ void Camera::event(const SDL_Event &e) noexcept {
 		const SDL_MouseMotionEvent motion { e.motion };
 		m_yaw += fastgltf::math::radians(motion.xrel * sensitivity);
 		m_pitch += fastgltf::math::radians(motion.yrel * sensitivity);
+		// unpredictable results past 90 degrees
+		const double pitch_max { fastgltf::math::radians(89.0f) };
+		const double pitch_min { fastgltf::math::radians(-89.0f) };
+		if (m_pitch > pitch_max) {
+			m_pitch = pitch_max;
+		} else if (m_pitch < pitch_min) {
+			m_pitch = pitch_min;
+		}
 		m_forward_dir.x() = cos(m_pitch) * sin(m_yaw);
 		m_forward_dir.y() = -sin(m_pitch);
 		m_forward_dir.z() = cos(m_pitch) * -cos(m_yaw);
