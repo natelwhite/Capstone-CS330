@@ -57,7 +57,7 @@ private:
 	std::unique_ptr<GPUResource<BUFFER>> m_i_buf; // index buffer
 	struct Mesh {
 		fastgltf::TRS transform;
-		Uint32 index_start, index_count;
+		Uint32 buffer_start, buffer_count;
 		// Evaluate this mesh's model matrix
 		fastgltf::math::fmat4x4 model() const;
 	};

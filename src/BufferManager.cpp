@@ -242,7 +242,7 @@ void BufferManager::renderGeometry(SDL_GPUCommandBuffer* cmdbuf, SDL_GPURenderPa
 			.mesh_model = obj.model()
 		};
 		SDL_PushGPUVertexUniformData(cmdbuf, 0, &vert_uniforms, sizeof(VertexUniforms));
-		SDL_DrawGPUIndexedPrimitives(render_pass, obj.index_count, 1, obj.index_start, 0, 0);
+		SDL_DrawGPUIndexedPrimitives(render_pass, obj.buffer_count, 1, obj.buffer_start, 0, 0);
 	}
 }
 
