@@ -54,7 +54,7 @@ private:
 			static_cast<float>(cos(m_pitch) * -cos(m_yaw))
 		})
 	};
-	const float m_speed { 1.0f };
+	const float m_speed { 0.1f };
 	fastgltf::math::fvec3 m_velocity { };
 	enum MOVEMENT {
 		FORWARD, LEFT, BACKWARD, RIGHT, UP, DOWN

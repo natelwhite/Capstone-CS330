@@ -1,16 +1,17 @@
 #include "SceneManager.hpp"
+#include "SDL3/SDL_gpu.h"
 
 SceneManager::SceneManager(std::shared_ptr<SDL_Window> window, std::shared_ptr<SDL_GPUDevice> gpu) : m_window(window), m_gpu(gpu) {
 		// Construct scene geometry
 		try {
-			m_buffer_man.reset(new BufferManager(m_gpu, "cubes"));
+			m_buffer_man.reset(new BufferManager(m_gpu, "monkey_highpoly"));
 		} catch (const std::exception &e) {
 			SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "%s", e.what());
 			return;
 		}
 		// load shaders
 		std::unique_ptr<GPUResource<SHADER>> v_shader { loadShader("PositionNormal.vert", 0, 0, 0, 1) };
-		std::unique_ptr<GPUResource<SHADER>> f_shader { loadShader("BlinnPhong.frag", 0, 0, 0, 1) };
+		std::unique_ptr<GPUResource<SHADER>> f_shader { loadShader("BlinnPhong.frag", 0, 0, 0, 2) };
 		// create pipeline
 		const SDL_GPUVertexBufferDescription BUF_DESCRIPTION { m_buffer_man->getBufferDescription() };
 		const std::vector<SDL_GPUVertexAttribute> VERT_ATTRIBS { m_buffer_man->getVertexAttributes() };
@@ -38,8 +39,8 @@ SceneManager::SceneManager(std::shared_ptr<SDL_Window> window, std::shared_ptr<S
 			.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
 			.rasterizer_state = {
 				.fill_mode = SDL_GPU_FILLMODE_FILL,
-				.cull_mode = SDL_GPU_CULLMODE_FRONT,
-				.front_face = SDL_GPU_FRONTFACE_CLOCKWISE
+				.cull_mode = SDL_GPU_CULLMODE_BACK,
+				.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
 			},
 			.target_info = {
 				.color_target_descriptions = &TARGET,
@@ -69,7 +70,7 @@ SDL_AppResult SceneManager::iterate() noexcept {
 		}
 		const SDL_GPUColorTargetInfo target_info {
 			.texture = swapchain_texture,
-			.clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+			.clear_color = {0.3f, 0.3f, 0.8f, 1.0f},
 			.load_op = SDL_GPU_LOADOP_CLEAR,
 			.store_op = SDL_GPU_STOREOP_STORE
 		};

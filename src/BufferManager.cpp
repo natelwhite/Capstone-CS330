@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <SDL3/SDL_log.h>
 #include <fastgltf/types.hpp>
+#include <string>
 #include "BufferManager.hpp"
 
 BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filename) : m_gpu(gpu) {
@@ -39,24 +40,29 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 		throw std::runtime_error("Error occured while loading GLTF file");
 	}
 
-	// Fill m_meshes with mesh data
-	size_t mesh_i_start { };
+	// Fill m_materials with material data
+	for (const fastgltf::Material &mat : asset->materials) {
+		const fastgltf::PBRData &pbr { mat.pbrData };
+		m_materials.emplace_back(pbr.baseColorFactor, pbr.roughnessFactor, pbr.metallicFactor);
+	}
+
+	// Fill m_objects with mesh data
 	auto loadMeshes = [&](fastgltf::Node &node, fastgltf::math::fmat4x4 TRS) -> void {
 		// decompose TRS matrix
 		if (const auto TRS (std::get_if<fastgltf::TRS>(&node.transform)); TRS) {
 			SDL_assert(node.meshIndex.has_value());
-			Uint32 mesh_i_count { };
 			const fastgltf::Mesh &mesh { asset->meshes.at(node.meshIndex.value()) };
+			Uint32 prim_i_start { };
+			std::vector<Primitive> primitives;
 			for (const fastgltf::Primitive &prim : mesh.primitives) {
 				SDL_assert(prim.indicesAccessor.has_value());
 				fastgltf::Accessor &index_access {
 					asset->accessors.at(prim.indicesAccessor.value())
 				};
-				const size_t prim_i_count { index_access.count };
-				mesh_i_count += prim_i_count;
+				primitives.emplace_back(prim_i_start, index_access.count, prim.materialIndex);
+				prim_i_start += index_access.count;
 			}
-			m_objects.emplace_back(*TRS, mesh_i_start, mesh_i_count);
-			mesh_i_start += mesh_i_count;
+			m_objects.emplace_back(*TRS, primitives);
 		}
 	};
 	fastgltf::iterateSceneNodes(asset.get(), asset->defaultScene.value(), fastgltf::math::fmat4x4(), loadMeshes);
@@ -77,7 +83,7 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 			const size_t prim_i_bytes {
 				asset->bufferViews.at(index_access.bufferViewIndex.value()).byteLength
 			};
-			// Find byte length for each attribute buffer
+			// Find byte length for each vertex attribute
 			Uint32 prim_pos_bytes { }, prim_norm_bytes { };
 			for (const fastgltf::Attribute &attrib : prim.attributes) {
 				fastgltf::Accessor &access { asset->accessors.at(attrib.accessorIndex) };
@@ -113,9 +119,11 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 	SDL_GPUCommandBuffer* cmdbuf { SDL_AcquireGPUCommandBuffer(m_gpu.lock().get()) };
 	SDL_GPUCopyPass* copy_pass { SDL_BeginGPUCopyPass(cmdbuf) };
 	Uint32 i_offset { }, v_offset { };
+	Uint32 mesh_i_offset { };
 	auto fillBuffers = [&](fastgltf::Node &node, fastgltf::math::fmat4x4 TRS) -> void {
 		SDL_assert(node.meshIndex.has_value());
 		const fastgltf::Mesh &mesh { asset->meshes.at(node.meshIndex.value()) };
+		Uint32 prim_i_offset { };
 		for (const fastgltf::Primitive &prim : mesh.primitives) {
 			// primitive index buffer
 			SDL_assert(prim.indicesAccessor.has_value());
@@ -160,6 +168,10 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 				SDL_MapGPUTransferBuffer(m_gpu.lock().get(), trans_buf.getResource(), false)
 			) };
 			fastgltf::copyFromAccessor<Uint16>(asset.get(), index_access, i_data);
+			for (size_t i = 0; i < index_access.count; ++i) {
+				i_data[i] += prim_i_offset + mesh_i_offset;
+			}
+			prim_i_offset += pos_data.size();
 			// Move Vertices to transfer buffer
 			Vertex* v_data { static_cast<Vertex*>(
 				reinterpret_cast<Vertex*>(i_data + index_access.count)
@@ -192,6 +204,7 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 			SDL_UploadToGPUBuffer(copy_pass, &i_trans_buf_loc, &i_buf_reg, false);
 			SDL_UploadToGPUBuffer(copy_pass, &v_trans_buf_loc, &v_buf_reg, false);
 		}
+		mesh_i_offset += prim_i_offset;
 	};
 	fastgltf::iterateSceneNodes(asset.get(), asset->defaultScene.value(), fastgltf::math::fmat4x4(), fillBuffers);
 	SDL_EndGPUCopyPass(copy_pass);
@@ -220,9 +233,10 @@ void BufferManager::sortObjects(const Camera &camera) noexcept {
 }
 
 void BufferManager::renderGeometry(SDL_GPUCommandBuffer* cmdbuf, SDL_GPURenderPass* render_pass, const Camera &camera) const noexcept {
-	const FragmentUniforms frag_uniforms {
-		.near_far = camera.nearFar(),
-		.camera_pos = camera.pos()
+	const PBR default_mat {
+		.color = {1, 1, 1, 1},
+		.roughness = 0.5f,
+		.metalness = 0.0f
 	};
 	const fastgltf::math::fmat4x4 proj_view { camera.proj() * camera.view() };
 	const SDL_GPUBufferBinding I_BUF_BINDING {
@@ -235,14 +249,48 @@ void BufferManager::renderGeometry(SDL_GPUCommandBuffer* cmdbuf, SDL_GPURenderPa
 	};
 	SDL_BindGPUIndexBuffer(render_pass, &I_BUF_BINDING, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 	SDL_BindGPUVertexBuffers(render_pass, 0, &V_BUF_BINDING, 1);
-	SDL_PushGPUFragmentUniformData(cmdbuf, 0, &frag_uniforms, sizeof(frag_uniforms));
+	const CameraFragmentUniforms cam_frag_uniforms {
+		.near_far = camera.nearFar(),
+		.camera_pos = camera.pos(),
+	};
+	SDL_PushGPUFragmentUniformData(cmdbuf, 0, &cam_frag_uniforms, sizeof(CameraFragmentUniforms));
 	for (const Mesh &obj : m_objects) {
 		const VertexUniforms vert_uniforms {
 			.camera_projection_view = proj_view,
 			.mesh_model = obj.model()
 		};
+		const std::optional<size_t> opt_mat_index { obj.primitives.front().material_index };
+		int mat_index { opt_mat_index.has_value() ? static_cast<int>(opt_mat_index.value()) : -1 };
+		Uint32 buffer_start { obj.primitives.front().buffer_start };
+		Uint32 buffer_count {  };
 		SDL_PushGPUVertexUniformData(cmdbuf, 0, &vert_uniforms, sizeof(VertexUniforms));
-		SDL_DrawGPUIndexedPrimitives(render_pass, obj.buffer_count, 1, obj.buffer_start, 0, 0);
+		for (const Primitive prim : obj.primitives) {
+			const std::optional<size_t> opt_prim_mat_index { prim.material_index };
+			const int prim_mat_index = opt_prim_mat_index.has_value() ? static_cast<int>(opt_prim_mat_index.value()) : -1;
+			if (mat_index != prim_mat_index) {
+				const PBR mat { mat_index != -1 ? m_materials.at(mat_index) : default_mat };
+				const MaterialFragmentUniforms mat_frag_uniforms {
+					.color = mat.color,
+					.roughness = mat.roughness,
+					.metalness = mat.metalness
+				};
+				SDL_PushGPUFragmentUniformData(cmdbuf, 1, &mat_frag_uniforms, sizeof(MaterialFragmentUniforms));
+				SDL_DrawGPUIndexedPrimitives(render_pass, buffer_count, 1, buffer_start, 0, 0);
+				mat_index = prim_mat_index;
+				buffer_count = prim.buffer_count;
+				buffer_start = prim.buffer_start;
+			} else {
+				buffer_count += prim.buffer_count;
+			}
+		}
+		const PBR mat { mat_index != -1 ? m_materials.at(mat_index) : default_mat };
+		const MaterialFragmentUniforms mat_frag_uniforms {
+			.color = mat.color,
+			.roughness = mat.roughness,
+			.metalness = mat.metalness
+		};
+		SDL_PushGPUFragmentUniformData(cmdbuf, 1, &mat_frag_uniforms, sizeof(MaterialFragmentUniforms));
+		SDL_DrawGPUIndexedPrimitives(render_pass, buffer_count, 1, buffer_start, 0, 0);
 	}
 }
 

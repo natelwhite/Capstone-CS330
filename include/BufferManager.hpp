@@ -55,13 +55,22 @@ private:
 	std::weak_ptr<SDL_GPUDevice> m_gpu;
 	std::unique_ptr<GPUResource<BUFFER>> m_v_buf; // vertex buffer
 	std::unique_ptr<GPUResource<BUFFER>> m_i_buf; // index buffer
+	struct PBR {
+		fastgltf::math::fvec4 color;
+		float roughness, metalness;
+	};
+	struct Primitive {
+		Uint32 buffer_start, buffer_count;
+		std::optional<size_t> material_index;
+	};
 	struct Mesh {
 		fastgltf::TRS transform;
-		Uint32 buffer_start, buffer_count;
+		std::vector<Primitive> primitives;
 		// Evaluate this mesh's model matrix
 		fastgltf::math::fmat4x4 model() const;
 	};
 	std::vector<Mesh> m_objects;
+	std::vector<PBR> m_materials;
 	// Structures that will be used for rendering data in a GLTF file
 	struct Vertex {
 		fastgltf::math::fvec3 pos, norm;
@@ -70,9 +79,14 @@ private:
 		fastgltf::math::fmat4x4 camera_projection_view;
 		fastgltf::math::fmat4x4 mesh_model;
 	};
-	struct FragmentUniforms {
+	struct CameraFragmentUniforms {
 		fastgltf::math::fvec2 near_far;
 		fastgltf::math::fvec3 camera_pos;
+	};
+	struct MaterialFragmentUniforms {
+		fastgltf::math::fvec4 color;
+		float roughness;
+		float metalness;
 	};
 	// Structure of the vertex buffer
 	const SDL_GPUVertexBufferDescription BUF_DESCRIPTION {

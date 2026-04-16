@@ -3,10 +3,17 @@
 
 using namespace metal;
 
-struct type_UBO
+struct type_VIEW
 {
     float2 near_far;
-    float3 view_pos;
+    float4 view_pos;
+};
+
+struct type_PBR
+{
+    float4 color;
+    float roughness;
+    float metalness;
 };
 
 struct main0_out
@@ -20,11 +27,11 @@ struct main0_in
     float4 in_var_TEXCOORD1 [[user(locn1)]];
 };
 
-fragment main0_out main0(main0_in in [[stage_in]], constant type_UBO& UBO [[buffer(0)]])
+fragment main0_out main0(main0_in in [[stage_in]], constant type_VIEW& VIEW [[buffer(0)]], constant type_PBR& PBR [[buffer(1)]])
 {
     main0_out out = {};
-    float3 _40 = fast::normalize(float3(0.0, 100.0, 50.0) - in.in_var_TEXCOORD1.xyz);
-    out.out_var_SV_Target0 = float4(float3(0.60000002384185791015625, 0.300000011920928955078125, 0.20000000298023223876953125) * ((float3(0.100000001490116119384765625) + (float3(1.0) * precise::max(0.0, dot(_40, in.in_var_NORMAL)))) + (float3(1.0) * (powr(precise::max(dot(fast::normalize(UBO.view_pos - in.in_var_TEXCOORD1.xyz), reflect(-_40, in.in_var_NORMAL)), 0.0), 32.0) * 0.5))), 1.0);
+    float3 _39 = fast::normalize(float3(50.0) - in.in_var_TEXCOORD1.xyz);
+    out.out_var_SV_Target0 = float4(PBR.color.xyz * ((float3(0.100000001490116119384765625) + (float3(1.0) * precise::max(0.0, dot(_39, in.in_var_NORMAL)))) + (float3(1.0) * (powr(precise::max(dot(fast::normalize(VIEW.view_pos.xyz - in.in_var_TEXCOORD1.xyz), reflect(-_39, in.in_var_NORMAL)), 0.0), 32.0) * 0.5))), 1.0);
     return out;
 }
 
