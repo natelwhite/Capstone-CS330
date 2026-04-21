@@ -1,8 +1,9 @@
 #include <filesystem>
 #include <stdexcept>
+#include <string>
+
 #include <SDL3/SDL_log.h>
 #include <fastgltf/types.hpp>
-#include <string>
 #include "BufferManager.hpp"
 
 BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filename) : m_gpu(gpu) {
@@ -45,6 +46,7 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 		const fastgltf::PBRData &pbr { mat.pbrData };
 		m_materials.emplace_back(pbr.baseColorFactor, pbr.roughnessFactor, pbr.metallicFactor);
 	}
+	SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Loaded %lu materials", m_materials.size());
 
 	// Fill m_objects with mesh data
 	auto loadMeshes = [&](fastgltf::Node &node, fastgltf::math::fmat4x4 TRS) -> void {
@@ -56,6 +58,7 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 			std::vector<Primitive> primitives;
 			for (const fastgltf::Primitive &prim : mesh.primitives) {
 				SDL_assert(prim.indicesAccessor.has_value());
+				SDL_assert(prim.type == fastgltf::PrimitiveType::Triangles);
 				fastgltf::Accessor &index_access {
 					asset->accessors.at(prim.indicesAccessor.value())
 				};
@@ -66,6 +69,17 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 		}
 	};
 	fastgltf::iterateSceneNodes(asset.get(), asset->defaultScene.value(), fastgltf::math::fmat4x4(), loadMeshes);
+
+	// sort primitives inside each mesh by material index
+	// to optimize draw calls ( less material switching -> less draw calls )
+	const auto material_sort = [](const Primitive &a, const Primitive &b) {
+		int a_mat_i { a.material_index.has_value() ? static_cast<int>(a.material_index.value()) : -1 };
+		int b_mat_i { b.material_index.has_value() ? static_cast<int>(b.material_index.value()) : -1 };
+		return a_mat_i > b_mat_i;
+	};
+	for (Mesh obj : m_objects) {
+		std::sort(obj.primitives.begin(), obj.primitives.end(), material_sort);
+	}
 
 	// Initialize buffers with size
 	// necessary to hold the asset's geometry
@@ -209,6 +223,7 @@ BufferManager::BufferManager(std::weak_ptr<SDL_GPUDevice> gpu, std::string filen
 	fastgltf::iterateSceneNodes(asset.get(), asset->defaultScene.value(), fastgltf::math::fmat4x4(), fillBuffers);
 	SDL_EndGPUCopyPass(copy_pass);
 	SDL_SubmitGPUCommandBuffer(cmdbuf);
+	SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Loaded %lu meshes", m_objects.size());
 }
 
 void BufferManager::sortObjects(const Camera &camera) noexcept {
@@ -234,7 +249,7 @@ void BufferManager::sortObjects(const Camera &camera) noexcept {
 
 void BufferManager::renderGeometry(SDL_GPUCommandBuffer* cmdbuf, SDL_GPURenderPass* render_pass, const Camera &camera) const noexcept {
 	const PBR default_mat {
-		.color = {1, 1, 1, 1},
+		.albedo = {1, 1, 1, 1},
 		.roughness = 0.5f,
 		.metalness = 0.0f
 	};
@@ -259,22 +274,17 @@ void BufferManager::renderGeometry(SDL_GPUCommandBuffer* cmdbuf, SDL_GPURenderPa
 			.camera_projection_view = proj_view,
 			.mesh_model = obj.model()
 		};
+		SDL_PushGPUVertexUniformData(cmdbuf, 0, &vert_uniforms, sizeof(VertexUniforms));
 		const std::optional<size_t> opt_mat_index { obj.primitives.front().material_index };
 		int mat_index { opt_mat_index.has_value() ? static_cast<int>(opt_mat_index.value()) : -1 };
 		Uint32 buffer_start { obj.primitives.front().buffer_start };
 		Uint32 buffer_count {  };
-		SDL_PushGPUVertexUniformData(cmdbuf, 0, &vert_uniforms, sizeof(VertexUniforms));
 		for (const Primitive prim : obj.primitives) {
 			const std::optional<size_t> opt_prim_mat_index { prim.material_index };
 			const int prim_mat_index = opt_prim_mat_index.has_value() ? static_cast<int>(opt_prim_mat_index.value()) : -1;
 			if (mat_index != prim_mat_index) {
 				const PBR mat { mat_index != -1 ? m_materials.at(mat_index) : default_mat };
-				const MaterialFragmentUniforms mat_frag_uniforms {
-					.color = mat.color,
-					.roughness = mat.roughness,
-					.metalness = mat.metalness
-				};
-				SDL_PushGPUFragmentUniformData(cmdbuf, 1, &mat_frag_uniforms, sizeof(MaterialFragmentUniforms));
+				SDL_PushGPUFragmentUniformData(cmdbuf, 1, &mat, sizeof(PBR));
 				SDL_DrawGPUIndexedPrimitives(render_pass, buffer_count, 1, buffer_start, 0, 0);
 				mat_index = prim_mat_index;
 				buffer_count = prim.buffer_count;
@@ -284,12 +294,7 @@ void BufferManager::renderGeometry(SDL_GPUCommandBuffer* cmdbuf, SDL_GPURenderPa
 			}
 		}
 		const PBR mat { mat_index != -1 ? m_materials.at(mat_index) : default_mat };
-		const MaterialFragmentUniforms mat_frag_uniforms {
-			.color = mat.color,
-			.roughness = mat.roughness,
-			.metalness = mat.metalness
-		};
-		SDL_PushGPUFragmentUniformData(cmdbuf, 1, &mat_frag_uniforms, sizeof(MaterialFragmentUniforms));
+		SDL_PushGPUFragmentUniformData(cmdbuf, 1, &mat, sizeof(PBR));
 		SDL_DrawGPUIndexedPrimitives(render_pass, buffer_count, 1, buffer_start, 0, 0);
 	}
 }

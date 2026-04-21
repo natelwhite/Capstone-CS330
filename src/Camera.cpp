@@ -53,7 +53,8 @@ void Camera::event(const SDL_Event &e) noexcept {
 	switch(e.type) {
 	// Resize aspect ratio
 	case SDL_EVENT_WINDOW_RESIZED: {
-		m_aspect_ratio = { static_cast<float>(e.window.data1), static_cast<float>(e.window.data2) };
+		m_width = static_cast<Uint32>(e.window.data1);
+		m_height = static_cast<Uint32>(e.window.data2);
 		break;
 	}
 	// Rotate camera
@@ -119,7 +120,7 @@ void Camera::event(const SDL_Event &e) noexcept {
 }
 
 fastgltf::math::fmat4x4 Camera::proj() const noexcept {
-	const float ratio { m_aspect_ratio.x() / m_aspect_ratio.y() };
+	const float ratio { static_cast<float>(m_width) / static_cast<float>(m_height) };
 	const float fov { fastgltf::math::radians(70.0f) };
 	return perspectiveRH(fov, ratio, m_near_far.x(), m_near_far.y());
 }

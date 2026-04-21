@@ -38,6 +38,7 @@ private:
 	std::shared_ptr<SDL_GPUDevice> m_gpu;
 	std::unique_ptr<BufferManager> m_buffer_man { nullptr };
 	std::unique_ptr<GPUResource<GRAPHICS_PIPELINE>> m_pipeline { nullptr };
+	std::unique_ptr<GPUResource<TEXTURE>> m_depth { nullptr };
 	Camera m_camera { };
 	bool m_is_focused { true };
 	GPUResource<SHADER>* loadShader(const std::string &filename, const Uint32 &num_samplers, const Uint32 &num_storage_textures, const Uint32 &num_storage_buffers, const Uint32 &num_uniform_buffers);

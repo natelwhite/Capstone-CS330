@@ -56,7 +56,7 @@ private:
 	std::unique_ptr<GPUResource<BUFFER>> m_v_buf; // vertex buffer
 	std::unique_ptr<GPUResource<BUFFER>> m_i_buf; // index buffer
 	struct PBR {
-		fastgltf::math::fvec4 color;
+		fastgltf::math::fvec4 albedo;
 		float roughness, metalness;
 	};
 	struct Primitive {
@@ -82,11 +82,6 @@ private:
 	struct CameraFragmentUniforms {
 		fastgltf::math::fvec2 near_far;
 		fastgltf::math::fvec3 camera_pos;
-	};
-	struct MaterialFragmentUniforms {
-		fastgltf::math::fvec4 color;
-		float roughness;
-		float metalness;
 	};
 	// Structure of the vertex buffer
 	const SDL_GPUVertexBufferDescription BUF_DESCRIPTION {

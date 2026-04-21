@@ -77,35 +77,35 @@ struct main0_in
 
 fragment main0_out main0(main0_in in [[stage_in]], constant type_VIEW& VIEW [[buffer(0)]], constant type_PBR& PBR [[buffer(1)]])
 {
-    spvUnsafeArray<Light, 3> _61 = spvUnsafeArray<Light, 3>({ Light{ 2.0, float3(1.0), float3(-3.0, -1.0, 1.0) }, Light{ 2.0, float3(1.0), float3(0.0, -1.0, 1.0) }, Light{ 2.0, float3(1.0), float3(3.0, -1.0, 1.0) } });
+    spvUnsafeArray<Light, 4> _62 = spvUnsafeArray<Light, 4>({ Light{ 1000.0, float3(1.0), float3(50.0, 100.0, 0.0) }, Light{ 1000.0, float3(1.0), float3(-50.0, 100.0, 0.0) }, Light{ 1000.0, float3(1.0), float3(0.0, 100.0, 50.0) }, Light{ 1000.0, float3(1.0), float3(0.0, 100.0, -50.0) } });
     
     main0_out out = {};
-    float3 _70 = fast::normalize(in.in_var_NORMAL);
-    float3 _74 = fast::normalize(VIEW.view_pos - in.in_var_TEXCOORD1.xyz);
-    float _80 = 1.0 - PBR.metalness;
-    float3 _83 = (float3(0.039999999105930328369140625) * _80) + (PBR.albedo.xyz * PBR.metalness);
-    float3 _85;
-    _85 = float3(0.0);
-    for (int _88 = 0; _88 < 3; )
+    float3 _71 = fast::normalize(in.in_var_NORMAL);
+    float3 _75 = fast::normalize(VIEW.view_pos - in.in_var_TEXCOORD1.xyz);
+    float _81 = 1.0 - PBR.metalness;
+    float3 _84 = (float3(0.039999999105930328369140625) * _81) + (PBR.albedo.xyz * PBR.metalness);
+    float3 _86;
+    _86 = float3(0.0);
+    for (int _89 = 0; _89 < 1; )
     {
-        float3 _95 = fast::normalize(_61[_88].pos - in.in_var_TEXCOORD1.xyz);
-        float3 _97 = fast::normalize(_74 + _95);
-        float _110 = PBR.roughness * PBR.roughness;
-        float _111 = _110 * _110;
-        float _113 = precise::max(dot(_70, _97), 0.0);
-        float _117 = ((_113 * _113) * (_111 - 1.0)) + 1.0;
-        float _122 = precise::max(dot(_70, _74), 0.0);
-        float _124 = precise::max(dot(_70, _95), 0.0);
-        float _125 = PBR.roughness + 1.0;
-        float _127 = (_125 * _125) * 0.125;
-        float _128 = 1.0 - _127;
-        float3 _143 = _83 + ((float3(1.0) - _83) * powr(fast::clamp(1.0 - precise::max(dot(_97, _74), 0.0), 0.0, 1.0), 5.0));
-        _85 += (((((((float3(1.0) - _143) * _80) * PBR.albedo.xyz) * float3(0.3183098733425140380859375)) + ((_143 * ((_111 / ((3.1415927410125732421875 * _117) * _117)) * ((_124 / ((_124 * _128) + _127)) * (_122 / ((_122 * _128) + _127))))) / float3(((4.0 * _122) * _124) + 0.001000000047497451305389404296875))) * ((_61[_88].color * (1.0 / length(_61[_88].pos - in.in_var_TEXCOORD1.xyz))) * _61[_88].strength)) * _124);
-        _88++;
+        float3 _96 = fast::normalize(_62[_89].pos - in.in_var_TEXCOORD1.xyz);
+        float3 _98 = fast::normalize(_75 + _96);
+        float _111 = PBR.roughness * PBR.roughness;
+        float _112 = _111 * _111;
+        float _114 = precise::max(dot(_71, _98), 0.0);
+        float _118 = ((_114 * _114) * (_112 - 1.0)) + 1.0;
+        float _123 = precise::max(dot(_71, _75), 0.0);
+        float _125 = precise::max(dot(_71, _96), 0.0);
+        float _126 = PBR.roughness + 1.0;
+        float _128 = (_126 * _126) * 0.125;
+        float _129 = 1.0 - _128;
+        float3 _144 = _84 + ((float3(1.0) - _84) * powr(fast::clamp(1.0 - precise::max(dot(_98, _75), 0.0), 0.0, 1.0), 5.0));
+        _86 += (((((((float3(1.0) - _144) * _81) * PBR.albedo.xyz) * float3(0.3183098733425140380859375)) + ((_144 * ((_112 / ((3.1415927410125732421875 * _118) * _118)) * ((_125 / ((_125 * _129) + _128)) * (_123 / ((_123 * _129) + _128))))) / float3(((4.0 * _123) * _125) + 9.9999997473787516355514526367188e-05))) * ((_62[_89].color * (1.0 / length(_62[_89].pos - in.in_var_TEXCOORD1.xyz))) * _62[_89].strength)) * _125);
+        _89++;
         continue;
     }
-    float3 _159 = (float3(0.02999999932944774627685546875) * PBR.albedo.xyz) + _85;
-    out.out_var_SV_Target0 = float4(powr(_159 / (_159 + float3(1.0)), float3(0.4545454680919647216796875)), 1.0);
+    float3 _160 = (float3(0.02999999932944774627685546875) * PBR.albedo.xyz) + _86;
+    out.out_var_SV_Target0 = float4(powr(_160 / (_160 + float3(1.0)), float3(0.4545454680919647216796875)), 1.0);
     return out;
 }
 

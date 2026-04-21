@@ -42,9 +42,17 @@ public:
 	 * Retrieve the current position of the camera
 	 */
 	fastgltf::math::fvec3 pos() const noexcept { return m_transform.translation; }
+	/**
+	 * Retrieve the current width of the camera
+	 */
+	Uint32 width() const noexcept { return m_width; }
+	/**
+	 * Retrieve the current height of the camera
+	 */
+	Uint32 height() const noexcept { return m_height; }
 private:
-	const fastgltf::math::fvec2 m_near_far { -1, 1 };
-	fastgltf::math::fvec2 m_aspect_ratio { 0, 0 }; // changes with window aspect ratio
+	const fastgltf::math::fvec2 m_near_far { 0.01, 100 };
+	Uint32 m_width { 1 }, m_height { 1 }; // changes with window size
 	fastgltf::TRS m_transform { };
 	double m_pitch { }, m_yaw { };
 	fastgltf::math::fvec3 m_forward_dir {

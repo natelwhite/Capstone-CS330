@@ -1,10 +1,14 @@
+#include <stdexcept>
+
 #include "SceneManager.hpp"
-#include "SDL3/SDL_gpu.h"
+#include "GPUResources.hpp"
+#include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_log.h>
 
 SceneManager::SceneManager(std::shared_ptr<SDL_Window> window, std::shared_ptr<SDL_GPUDevice> gpu) : m_window(window), m_gpu(gpu) {
 		// Construct scene geometry
 		try {
-			m_buffer_man.reset(new BufferManager(m_gpu, "monkey_highpoly"));
+			m_buffer_man.reset(new BufferManager(m_gpu, "roughness_metallic_demo"));
 		} catch (const std::exception &e) {
 			SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "%s", e.what());
 			return;
@@ -42,49 +46,103 @@ SceneManager::SceneManager(std::shared_ptr<SDL_Window> window, std::shared_ptr<S
 				.cull_mode = SDL_GPU_CULLMODE_BACK,
 				.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
 			},
+			.depth_stencil_state {
+				.compare_op = SDL_GPU_COMPAREOP_LESS,
+				.write_mask = 0xFF,
+				.enable_depth_test = true,
+				.enable_depth_write = true,
+				.enable_stencil_test = false
+			},
 			.target_info = {
 				.color_target_descriptions = &TARGET,
 				.num_color_targets = 1,
+				.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+				.has_depth_stencil_target = true,
 			}
 		};
 		m_pipeline.reset(new GPUResource<GRAPHICS_PIPELINE>(m_gpu, PIPELINE_INFO));
+		if (!m_pipeline) {
+			throw std::runtime_error("Error creating pipeline");
+		}
+		const GPUResourceTraits<TEXTURE>::Info DEPTH_INFO {
+			.type = SDL_GPU_TEXTURETYPE_2D,
+			.format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+			.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+			.width = m_camera.width(),
+			.height = m_camera.height(),
+			.layer_count_or_depth = 1,
+			.num_levels = 1,
+			.sample_count = SDL_GPU_SAMPLECOUNT_1
+		};
+		m_depth.reset(new GPUResource<TEXTURE>(m_gpu, DEPTH_INFO));
+		if (!m_depth) {
+			throw std::runtime_error("Error creating depth texture");
+		}
 }
 
 SDL_AppResult SceneManager::iterate() noexcept {
 	if (m_is_focused) {
 		m_camera.iterate();
-		m_buffer_man->sortObjects(m_camera);
-		SDL_GPUCommandBuffer* cmdbuf { SDL_AcquireGPUCommandBuffer(m_gpu.get()) };
-		if (!cmdbuf) {
-			return SDL_APP_FAILURE;
-		}
-		SDL_GPUTexture* swapchain_texture;
-		if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, m_window.get(), &swapchain_texture, NULL, NULL)) {
-			return SDL_APP_FAILURE;
-		}
-		// Texture may still be NULL,
-		// but it's not an err,
-		// refer to SDL_WaitAndAcquireGPUSwapchainTexture docs for more info
-		if (!swapchain_texture) {
-			return SDL_APP_CONTINUE;
-		}
-		const SDL_GPUColorTargetInfo target_info {
-			.texture = swapchain_texture,
-			.clear_color = {0.3f, 0.3f, 0.8f, 1.0f},
-			.load_op = SDL_GPU_LOADOP_CLEAR,
-			.store_op = SDL_GPU_STOREOP_STORE
-		};
-		SDL_GPURenderPass* render_pass { SDL_BeginGPURenderPass(cmdbuf, &target_info, 1, NULL) };
-		SDL_BindGPUGraphicsPipeline(render_pass, m_pipeline->getResource());
-		m_buffer_man->renderGeometry(cmdbuf, render_pass, m_camera);
-		SDL_EndGPURenderPass(render_pass);
-		SDL_SubmitGPUCommandBuffer(cmdbuf);
 	}
+	m_buffer_man->sortObjects(m_camera);
+	SDL_GPUCommandBuffer* cmdbuf { SDL_AcquireGPUCommandBuffer(m_gpu.get()) };
+	if (!cmdbuf) {
+		return SDL_APP_FAILURE;
+	}
+	SDL_GPUTexture* swapchain_texture;
+	if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, m_window.get(), &swapchain_texture, NULL, NULL)) {
+		return SDL_APP_FAILURE;
+	}
+	// Texture may still be NULL,
+	// but it's not an err,
+	// refer to SDL_WaitAndAcquireGPUSwapchainTexture docs for more info
+	if (!swapchain_texture) {
+		return SDL_APP_CONTINUE;
+	}
+	const SDL_GPUColorTargetInfo color_target_info {
+		.texture = swapchain_texture,
+		.clear_color = {0.1f, 0.1f, 0.4f, 1.0f},
+		.load_op = SDL_GPU_LOADOP_CLEAR,
+		.store_op = SDL_GPU_STOREOP_STORE
+	};
+	const SDL_GPUDepthStencilTargetInfo depth_target_info {
+		.texture = m_depth->getResource(),
+		.clear_depth = 1,
+		.load_op = SDL_GPU_LOADOP_CLEAR,
+		.store_op = SDL_GPU_STOREOP_STORE,
+		.stencil_load_op = SDL_GPU_LOADOP_CLEAR,
+		.stencil_store_op = SDL_GPU_STOREOP_STORE,
+		.cycle = true,
+		.clear_stencil = 0
+	};
+	SDL_GPURenderPass* render_pass { SDL_BeginGPURenderPass(cmdbuf, &color_target_info, 1, &depth_target_info) };
+	SDL_BindGPUGraphicsPipeline(render_pass, m_pipeline->getResource());
+	m_buffer_man->renderGeometry(cmdbuf, render_pass, m_camera);
+	SDL_EndGPURenderPass(render_pass);
+	SDL_SubmitGPUCommandBuffer(cmdbuf);
 	return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SceneManager::event(const SDL_Event &e) noexcept {
 	switch(e.type) {
+	case SDL_EVENT_WINDOW_RESIZED: {
+		m_camera.event(e);
+		const GPUResourceTraits<TEXTURE>::Info DEPTH_INFO {
+			.type = SDL_GPU_TEXTURETYPE_2D,
+			.format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+			.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+			.width = m_camera.width(),
+			.height = m_camera.height(),
+			.layer_count_or_depth = 1,
+			.num_levels = 1,
+			.sample_count = SDL_GPU_SAMPLECOUNT_1
+		};
+		m_depth.reset(new GPUResource<TEXTURE>(m_gpu, DEPTH_INFO));
+		if (!m_depth) {
+			return SDL_APP_FAILURE;
+		}
+		break;
+	}
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		if (!m_is_focused) {
 			m_is_focused = true;
@@ -94,6 +152,9 @@ SDL_AppResult SceneManager::event(const SDL_Event &e) noexcept {
 		}
 		break;
 	case SDL_EVENT_KEY_DOWN:
+		if (m_is_focused) {
+			m_camera.event(e);
+		}
 		switch(e.key.key) {
 		case SDLK_ESCAPE:
 			if (m_is_focused) {
@@ -104,11 +165,12 @@ SDL_AppResult SceneManager::event(const SDL_Event &e) noexcept {
 			}
 		}
 		break;
+	case SDL_EVENT_KEY_UP:
+	case SDL_EVENT_MOUSE_MOTION: {
+		if (m_is_focused) {
+			m_camera.event(e);
+		}
 	}
-	// Class member has event handler,
-	// only call it if the scene is in focus
-	if (m_is_focused) {
-		m_camera.event(e);
 	}
 	return SDL_APP_CONTINUE;
 }

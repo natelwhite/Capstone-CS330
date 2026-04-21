@@ -7,6 +7,11 @@ cbuffer PBR : register(b1, space3) {
 	float1 roughness;
 	float1 metalness;
 }
+struct Light {
+	float strength;
+	float3 color;
+	float3 pos;
+};
 
 struct Input {
 	float4 Position : SV_POSITION;
@@ -17,11 +22,6 @@ struct Output {
 	float4 Color : SV_Target0;
 };
 
-struct Light {
-	float strength;
-	float3 color;
-	float3 pos;
-};
 
 // taken from https://learnopengl.com/PBR/Lighting
 static const float PI = 3.14159265;
@@ -56,18 +56,22 @@ float3 mix(float3 x, float3 y, float a) {
 	return x * (1 - a) + y * a;
 }
 
-static const Light lights[3] = { {
-	2,
+static const Light lights[4] = { {
+	1000,
 	float3(1, 1, 1),
-	float3(-3, -1, 1)
+	float3(50, 100, 0)
 }, {
-	2,
+	1000,
 	float3(1, 1, 1),
-	float3(0, -1, 1)
+	float3(-50, 100, 0)
 }, {
-	2,
+	1000,
 	float3(1, 1, 1),
-	float3(3, -1, 1)
+	float3(0, 100, 50)
+}, {
+	1000,
+	float3(1, 1, 1),
+	float3(0, 100, -50)
 } };
 
 Output main(Input input) {
@@ -79,7 +83,7 @@ Output main(Input input) {
 
 	// light radiance
 	float3 Lo = float3(0, 0, 0);
-	for (int i = 0; i < 3; ++i) {
+	for (int i = 0; i < 1; i++) {
 		float3 L = normalize(lights[i].pos - worldPos);
 		float3 H = normalize(V + L);
 		float distance = length(lights[i].pos - worldPos);
@@ -96,7 +100,7 @@ Output main(Input input) {
 		kD *= 1.0 - metalness;
 
 		float3 numerator = NDF * G * F;
-		float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
+		float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
 		float3 specular = numerator / denominator;
 		
 		// add to radiance Lo
@@ -105,11 +109,10 @@ Output main(Input input) {
 	}
 
 	float3 ambient = float3(0.03, 0.03, 0.03) * albedo.xyz;
-	float3 result;
-	result = ambient + Lo;
+	float3 result = ambient + Lo;
 	result = result / (result + float3(1.0, 1.0, 1.0));
-	float gamma_correction = 1.0 / 2.2;
-	result = pow(result, gamma_correction);
+	float gamma = 1.0 / 2.2;
+	result = pow(result, float3(gamma, gamma, gamma));
 	return Output(float4(result, 1.0));
 }
 
